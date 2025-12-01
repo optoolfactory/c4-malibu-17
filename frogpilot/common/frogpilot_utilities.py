@@ -7,6 +7,7 @@ import requests
 import shutil
 import subprocess
 import threading
+import time
 import zipfile
 
 from functools import cache
@@ -14,7 +15,8 @@ from pathlib import Path
 
 import openpilot.system.sentry as sentry
 
-from cereal import messaging
+from cereal import log, messaging
+from openpilot.common.realtime import DT_DMON, DT_HW
 
 from openpilot.common.utils import atomic_write
 from openpilot.frogpilot.common import frogpilot_variables
@@ -212,3 +214,38 @@ def update_json_file(path, data):
   path.parent.mkdir(parents=True, exist_ok=True)
   with atomic_write(str(path), "w", overwrite=True) as file:
     json.dump(data, file, indent=2, sort_keys=True)
+
+
+def wait_for_no_driver(params, sm, time_threshold=60):
+  while sm["deviceState"].screenBrightnessPercent != 0 or any(proc.name == "dmonitoringd" and proc.running for proc in sm["managerState"].processes):
+    sm.update()
+
+    if any(ps.ignitionLine or ps.ignitionCan for ps in sm["pandaStates"] if ps.pandaType != log.PandaState.PandaType.unknown):
+      return
+
+    time.sleep(DT_HW)
+
+  params.put_bool("IsDriverViewEnabled", True)
+
+  while not any(proc.name == "dmonitoringd" and proc.running for proc in sm["managerState"].processes):
+    sm.update()
+
+    time.sleep(DT_HW)
+
+  start_time = time.monotonic()
+  while True:
+    sm.update()
+
+    elapsed_time = time.monotonic() - start_time
+    if elapsed_time >= time_threshold:
+      break
+
+    if any(ps.ignitionLine or ps.ignitionCan for ps in sm["pandaStates"] if ps.pandaType != log.PandaState.PandaType.unknown):
+      break
+
+    if sm["driverMonitoringState"].faceDetected or not sm.alive["driverMonitoringState"]:
+      start_time = time.monotonic()
+
+    time.sleep(DT_DMON)
+
+  params.remove("IsDriverViewEnabled")

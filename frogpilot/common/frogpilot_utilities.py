@@ -17,6 +17,7 @@ import openpilot.system.sentry as sentry
 
 from cereal import log, messaging
 from openpilot.common.realtime import DT_DMON, DT_HW
+from panda import Panda
 
 from openpilot.common.utils import atomic_write
 from openpilot.frogpilot.common import frogpilot_variables
@@ -139,6 +140,19 @@ def extract_zip(zip_file, extract_path):
 
   zip_file.unlink()
   print("Extraction completed!")
+
+
+def flash_panda(params_memory):
+  for serial in Panda.list():
+    try:
+      with Panda(serial=serial) as panda:
+        print(f"Flashing Panda {serial}")
+        panda.flash()
+    except Exception as exception:
+      print(f"Failed to flash Panda {serial}: {exception}")
+      sentry.capture_exception(exception)
+
+  params_memory.remove("FlashPanda")
 
 
 @cache

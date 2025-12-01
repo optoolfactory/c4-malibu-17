@@ -24,6 +24,9 @@ def check_assets(theme_manager, thread_manager, params_memory, frogpilot_toggles
     if asset_to_download:
       thread_manager.run_with_lock(theme_manager.download_theme, (asset_type, asset_to_download, asset_param, frogpilot_toggles))
 
+  if params_memory.get_bool("FlashPanda"):
+    thread_manager.run_with_lock(frogpilot_utilities.flash_panda, (params_memory))
+
 def transition_offroad(gps_position, thread_manager, time_validated, sm, params, frogpilot_toggles):
   if time_validated:
     thread_manager.run_with_lock(send_stats, (gps_position, params, frogpilot_toggles))

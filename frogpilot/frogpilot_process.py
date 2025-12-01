@@ -41,6 +41,8 @@ def update_checks(now, theme_manager, thread_manager, params, params_memory, fro
   while not (frogpilot_utilities.is_url_pingable("https://github.com") or frogpilot_utilities.is_url_pingable("https://gitlab.com")):
     time.sleep(60)
 
+  thread_manager.run_with_lock(frogpilot_functions.update_maps, (now, params, params_memory))
+
   theme_manager.update_themes(frogpilot_toggles, boot_run)
 
   if frogpilot_toggles.automatic_updates:

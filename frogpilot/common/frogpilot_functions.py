@@ -124,6 +124,62 @@ def update_boot_logo(frogpilot=False, stock=False):
     frogpilot_utilities.run_cmd(["sudo", "mount", "-o", f"remount,{mount_options}", "/"], "Successfully restored / mount options", "Failed to restore / mount options")
 
 
+def update_maps(now, params, params_memory, manual_update=False):
+  maps_selected = params.get("MapsSelected")
+  if not maps_selected:
+    return
+
+  day = now.day
+  is_first = day == 1
+  is_sunday = now.weekday() == 6
+  schedule = params.get("PreferredSchedule")
+
+  maps_downloaded = frogpilot_variables.MAPS_PATH.exists()
+  if maps_downloaded and (schedule == 0 or (schedule == 1 and not is_sunday) or (schedule == 2 and not is_first)) and not manual_update:
+    return
+
+  suffix = "th" if 11 <= day <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(day % 10, "th")
+  todays_date = now.strftime(f"%B {day}{suffix}, %Y")
+
+  if maps_downloaded and params.get("LastMapsUpdate") == todays_date and not manual_update:
+    return
+
+  pm = messaging.PubMaster(["mapdIn"])
+  sm = messaging.SubMaster(["mapdExtendedOut"])
+
+  time.sleep(1)
+
+  msg = messaging.new_message("mapdIn")
+  msg.mapdIn.type = 0
+  msg.mapdIn.str = maps_selected
+  pm.send("mapdIn", msg)
+
+  started = False
+  while True:
+    sm.update(1000)
+
+    if params_memory.get_bool("CancelDownloadMaps"):
+      msg = messaging.new_message("mapdIn")
+      msg.mapdIn.type = 27
+      pm.send("mapdIn", msg)
+
+      params_memory.remove("CancelDownloadMaps")
+      params_memory.remove("DownloadMaps")
+      return
+
+    if sm.updated["mapdExtendedOut"]:
+      progress = sm["mapdExtendedOut"].downloadProgress
+
+      if progress.active:
+        started = True
+
+      if not progress.active and started:
+        break
+
+  params.put("LastMapsUpdate", todays_date)
+  params_memory.remove("DownloadMaps")
+
+
 def update_openpilot(thread_manager, params):
   def update_available():
     run_cmd(["pkill", "-SIGUSR1", "-f", "system.updated.updated"], "Checking for updates...", "Failed to check for update...", report=False)

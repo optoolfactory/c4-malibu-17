@@ -127,6 +127,7 @@ procs = [
 # FrogPilot variables
 procs += [
   PythonProcess("frogpilot_process", "frogpilot.frogpilot_process", always_run),
+  NativeProcess("mapd", "frogpilot/navigation", ["./mapd"], always_run),
 ]
 
 managed_processes = {p.name: p for p in procs}

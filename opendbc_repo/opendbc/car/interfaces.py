@@ -8,12 +8,15 @@ from typing import Any
 from collections.abc import Callable
 from functools import cache
 
+from cereal import custom
 from opendbc.car import DT_CTRL, apply_hysteresis, gen_empty_fingerprint, scale_rot_inertia, scale_tire_stiffness, STD_CARGO_KG
 from opendbc.car import structs
 from opendbc.car.can_definitions import CanData, CanRecvCallable, CanSendCallable
+from opendbc.car.chrysler.values import CAR as CHRYSLER, ChryslerFrogPilotFlags
 from opendbc.car.common.basedir import BASEDIR
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.common.simple_kalman import KF1D, get_kalman_gain
+from opendbc.car.mock.values import CAR as MOCK
 from opendbc.car.values import PLATFORMS
 from opendbc.can import CANParser
 from openpilot.common.params import Params
@@ -99,19 +102,21 @@ class CarInterfaceBase(ABC):
   CarController: 'CarControllerBase'
   RadarInterface: 'RadarInterfaceBase' = RadarInterfaceBase
 
-  def __init__(self, CP: structs.CarParams):
+  def __init__(self, CP: structs.CarParams, FPCP: custom.FrogPilotCarParams):
     self.CP = CP
 
     self.frame = 0
     self.v_ego_cluster_seen = False
 
-    self.CS: CarStateBase = self.CarState(CP)
+    self.CS: CarStateBase = self.CarState(CP, FPCP)
     self.can_parsers: dict[StrEnum, CANParser] = self.CS.get_can_parsers(CP)
 
     dbc_names = {bus: cp.dbc_name for bus, cp in self.can_parsers.items()}
     self.CC: CarControllerBase = self.CarController(dbc_names, CP)
 
     # FrogPilot variables
+    self.FPCP = FPCP
+
     self.params_memory = Params(memory=True)
 
   def apply(self, c: structs.CarControl, now_nanos: int | None = None) -> tuple[structs.CarControl.Actuators, list[CanData]]:
@@ -160,6 +165,22 @@ class CarInterfaceBase(ABC):
     return ret
 
   # FrogPilot variables
+  @classmethod
+  def get_frogpilot_params(cls, candidate: str, fingerprint: dict[int, dict[int, int]], car_fw: list[structs.CarParams.CarFw], CP: structs.CarParams):
+    fp_ret = custom.FrogPilotCarParams.new_message()
+
+    platform = PLATFORMS[candidate]
+
+    fp_ret.flags |= int(platform.config.flags)
+    fp_ret.safetyConfigs = [custom.FrogPilotCarParams.SafetyConfig.new_message(safetyParam=config.safetyParam) for config in CP.safetyConfigs]
+
+    if platform not in MOCK:
+      if platform in CHRYSLER:
+        if candidate == CHRYSLER.RAM_HD_5TH_GEN:
+          if 0x23A not in fingerprint[0]:
+            fp_ret.flags |= ChryslerFrogPilotFlags.RAM_HD_ALT_BUTTONS.value
+
+    return fp_ret
 
   @staticmethod
   @abstractmethod
@@ -246,7 +267,7 @@ class CarInterfaceBase(ABC):
         cp.update(can_packets)
 
     # get CarState
-    ret = self.CS.update(self.can_parsers)
+    ret, fp_ret = self.CS.update(self.can_parsers)
 
     ret.canValid = all(cp.can_valid for cp in self.can_parsers.values())
     ret.canTimeout = any(cp.bus_timeout for cp in self.can_parsers.values())
@@ -271,11 +292,11 @@ class CarInterfaceBase(ABC):
 
     # FrogPilot variables
 
-    return ret
+    return ret, fp_ret
 
 
 class CarStateBase(ABC):
-  def __init__(self, CP: structs.CarParams):
+  def __init__(self, CP: structs.CarParams, FPCP: custom.FrogPilotCarParams):
     self.CP = CP
     self.car_fingerprint = CP.carFingerprint
     self.out = structs.CarState()
@@ -300,6 +321,8 @@ class CarStateBase(ABC):
     self.v_ego_kf = KF1D(x0=x0, A=A, C=C[0], K=K)
 
     # FrogPilot variables
+    self.FPCP = FPCP
+
     self.CC: structs.CarControl = structs.CarControl.new_message()
 
   @abstractmethod

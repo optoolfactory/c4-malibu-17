@@ -4,7 +4,7 @@ import time
 import wave
 
 
-from cereal import car, messaging
+from cereal import car, custom, messaging
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.filter_simple import FirstOrderFilter
 from openpilot.common.params import Params
@@ -32,6 +32,7 @@ if HARDWARE.get_device_type() == "tizi":
 AudibleAlert = car.CarControl.HUDControl.AudibleAlert
 
 # FrogPilot variables
+FrogPilotAudibleAlert = custom.FrogPilotCarControl.HUDControl.AudibleAlert
 
 
 sound_list: dict[int, tuple[str, int | None, float]] = {
@@ -134,6 +135,8 @@ class Soundd:
       new_alert = sm['selfdriveState'].alertSound.raw
 
       # FrogPilot variables
+      if new_alert == AudibleAlert.none:
+        new_alert = sm['frogpilotSelfdriveState'].alertSound.raw
 
       self.update_alert(new_alert)
     elif check_selfdrive_timeout_alert(sm):
@@ -161,6 +164,7 @@ class Soundd:
     sm = messaging.SubMaster(['selfdriveState', 'soundPressure'])
 
     # FrogPilot variables
+    sm = sm.extend(['frogpilotPlan', 'frogpilotSelfdriveState'])
 
     with self.get_stream(sd) as stream:
       rk = Ratekeeper(20)

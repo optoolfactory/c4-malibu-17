@@ -21,6 +21,8 @@ from openpilot.common.swaglog import cloudlog, add_file_handler
 from openpilot.system.version import get_build_metadata
 from openpilot.system.hardware.hw import Paths
 
+from openpilot.frogpilot.common import frogpilot_functions
+
 
 def manager_init() -> None:
   save_bootlog()
@@ -37,6 +39,8 @@ def manager_init() -> None:
 
   if params.get_bool("RecordFrontLock"):
     params.put_bool("RecordFront", True)
+
+  # FrogPilot variables
 
   # set unset params to their default value
   for k in params.all_keys():
@@ -91,6 +95,10 @@ def manager_init() -> None:
   for p in managed_processes.values():
     p.prepare()
 
+  # FrogPilot variables
+  frogpilot_functions.install_frogpilot()
+  frogpilot_functions.frogpilot_boot_functions()
+
 
 def manager_cleanup() -> None:
   # send signals to kill all procs
@@ -127,6 +135,8 @@ def manager_thread() -> None:
   started_prev = False
   ignition_prev = False
 
+  # FrogPilot variables
+
   while True:
     sm.update(1000)
 
@@ -134,12 +144,18 @@ def manager_thread() -> None:
 
     if started and not started_prev:
       params.clear_all(ParamKeyFlag.CLEAR_ON_ONROAD_TRANSITION)
+
+      # FrogPilot variables
     elif not started and started_prev:
       params.clear_all(ParamKeyFlag.CLEAR_ON_OFFROAD_TRANSITION)
+
+      # FrogPilot variables
 
     ignition = any(ps.ignitionLine or ps.ignitionCan for ps in sm['pandaStates'] if ps.pandaType != log.PandaState.PandaType.unknown)
     if ignition and not ignition_prev:
       params.clear_all(ParamKeyFlag.CLEAR_ON_IGNITION_ON)
+
+      # FrogPilot variables
 
     # update onroad params, which drives pandad's safety setter thread
     if started != started_prev:
@@ -179,6 +195,8 @@ def manager_thread() -> None:
     if shutdown:
       break
 
+    # FrogPilot variables
+
 
 def main() -> None:
   manager_init()
@@ -199,7 +217,7 @@ def main() -> None:
   params = Params()
   if params.get_bool("DoUninstall"):
     cloudlog.warning("uninstalling")
-    HARDWARE.uninstall()
+    frogpilot_functions.uninstall_frogpilot()
   elif params.get_bool("DoReboot"):
     cloudlog.warning("reboot")
     HARDWARE.reboot()

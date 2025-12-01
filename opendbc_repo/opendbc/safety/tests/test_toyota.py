@@ -122,6 +122,8 @@ class TestToyotaSafetyBase(common.CarSafetyTest, common.LongitudinalAccelSafetyT
       self.assertFalse(self._rx(msg))
       self.assertFalse(self.safety.get_controls_allowed())
 
+  # FrogPilot variables
+
 
 class TestToyotaSafetyTorque(TestToyotaSafetyBase, common.MotorTorqueSteeringSafetyTest, common.SteerRequestCutSafetyTest):
 

@@ -8,6 +8,7 @@ import subprocess
 import threading
 import zipfile
 
+from functools import cache
 from pathlib import Path
 
 import openpilot.system.sentry as sentry
@@ -121,6 +122,11 @@ def extract_zip(zip_file, extract_path):
 
   zip_file.unlink()
   print("Extraction completed!")
+
+
+@cache
+def is_FrogsGoMoo():
+  return frogpilot_variables.FROGS_GO_MOO_PATH.is_file()
 
 
 def is_url_pingable(url):

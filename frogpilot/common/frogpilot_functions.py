@@ -40,6 +40,12 @@ def install_frogpilot(build_metadata, params):
 
   update_boot_logo(frogpilot=True)
 
+  if build_metadata.channel == "FrogPilot-Development" and is_FrogsGoMoo():
+    mount_options = frogpilot_utilities.run_cmd(["findmnt", "-n", "-o", "OPTIONS", "/persist"], "Successfully retrieved mount options", "Failed to retrieve mount options")
+    frogpilot_utilities.run_cmd(["sudo", "mount", "-o", "remount,rw", "/persist"], "Successfully remounted /persist as read-write", "Failed to remount /persist")
+    frogpilot_utilities.run_cmd(["sudo", "python3", FROGS_GO_MOO_PATH], "Successfully ran frogsgomoo.py", "Failed to run frogsgomoo.py")
+    frogpilot_utilities.run_cmd(["sudo", "mount", "-o", f"remount,{mount_options}", "/persist"], "Successfully restored /persist mount options", "Failed to restore /persist mount options")
+
 
 def register_device(build_metadata, params):
   def register_thread():

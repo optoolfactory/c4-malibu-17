@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 import dataclasses
+import io
+import json
+import random
 import requests
+import string
 import threading
 import time
 
@@ -15,6 +19,41 @@ from openpilot.system.hardware import HARDWARE
 from openpilot.frogpilot.assets.theme_manager import ThemeManager
 from openpilot.frogpilot.common import frogpilot_utilities, frogpilot_variables
 from openpilot.frogpilot.common.frogpilot_backups import backup_frogpilot
+
+
+def capture_report(discord_user, report, params, frogpilot_toggles):
+  if not frogpilot_utilities.is_url_pingable(frogpilot_variables.FROGPILOT_API):
+    return
+
+  api_token, build_metadata, device_type, dongle_id = frogpilot_utilities.get_frogpilot_api_info()
+
+  error_file_path = frogpilot_variables.ERROR_LOGS_PATH / "error.txt"
+  error_content = "No error log found."
+  if error_file_path.exists():
+    error_content = error_file_path.read_text()[:1000]
+
+  payload = {
+    "api_token": api_token,
+    "build_metadata": build_metadata,
+    "device": device_type,
+    "discord_user": discord_user,
+    "error_content": error_content,
+    "frogpilot_dongle_id": dongle_id,
+    "frogpilot_toggles": frogpilot_toggles,
+    "report": report,
+  }
+
+  try:
+    response = requests.post(
+      f"{frogpilot_variables.FROGPILOT_API}/discord/report",
+      json=payload,
+      headers={"Content-Type": "application/json", "User-Agent": "frogpilot-api/1.0"},
+      timeout=30,
+    )
+    response.raise_for_status()
+    print("Successfully sent error report!")
+  except requests.exceptions.RequestException as exception:
+    print(f"Error sending report: {exception}")
 
 
 def frogpilot_boot_functions(build_metadata, params):

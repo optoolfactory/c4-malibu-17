@@ -27,6 +27,11 @@ def check_assets(theme_manager, thread_manager, params_memory, frogpilot_toggles
   if params_memory.get_bool("FlashPanda"):
     thread_manager.run_with_lock(frogpilot_utilities.flash_panda, (params_memory))
 
+  report_data = params_memory.get("IssueReported")
+  if report_data:
+    frogpilot_functions.capture_report(report_data["DiscordUser"], report_data["Issue"], params_memory, vars(frogpilot_toggles))
+    params_memory.remove("IssueReported")
+
 def transition_offroad(gps_position, theme_manager, thread_manager, time_validated, sm, params, frogpilot_toggles):
   if frogpilot_toggles.lock_doors_timer != 0:
     thread_manager.run_with_lock(frogpilot_utilities.lock_doors, (frogpilot_toggles.lock_doors_timer, sm, params), report=False)

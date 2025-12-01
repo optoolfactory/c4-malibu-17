@@ -11,6 +11,7 @@ from openpilot.common.params import Params
 from openpilot.common.time_helpers import system_time_valid
 from openpilot.system.hardware import HARDWARE
 
+from openpilot.frogpilot.assets.theme_manager import ThemeManager
 from openpilot.frogpilot.common import frogpilot_utilities, frogpilot_variables
 from openpilot.frogpilot.common.frogpilot_backups import backup_frogpilot
 
@@ -19,6 +20,7 @@ def frogpilot_boot_functions(build_metadata, params):
   params_memory = Params(memory=True)
 
   frogpilot_variables.FrogPilotVariables()
+  ThemeManager(params, params_memory, boot_run=True).update_active_theme(frogpilot_toggles=get_frogpilot_toggles(), boot_run=True)
 
   def boot_thread():
     while not system_time_valid():
@@ -32,6 +34,7 @@ def frogpilot_boot_functions(build_metadata, params):
 
 def install_frogpilot(build_metadata, params):
   paths = [
+    THEME_SAVE_PATH
   ]
   for path in paths:
     path.mkdir(parents=True, exist_ok=True)

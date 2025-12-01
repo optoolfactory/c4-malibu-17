@@ -102,7 +102,7 @@ class FrogPilotPlanner:
     self.tracking_lead_filter.update(following_lead)
     return self.tracking_lead_filter.x >= frogpilot_variables.THRESHOLD
 
-  def publish(self, sm, pm, frogpilot_toggles):
+  def publish(self, theme_updated, sm, pm, frogpilot_toggles):
     frogpilot_plan_send = messaging.new_message("frogpilotPlan")
     frogpilot_plan_send.valid = sm.all_checks(service_list=["carState", "controlsState", "selfdriveState", "radarState"])
     frogpilotPlan = frogpilot_plan_send.frogpilotPlan
@@ -131,6 +131,8 @@ class FrogPilotPlanner:
     frogpilotPlan.redLight = self.frogpilot_cem.stop_light_detected
 
     frogpilotPlan.roadCurvature = self.road_curvature
+
+    frogpilotPlan.themeUpdated = theme_updated
 
     frogpilotPlan.vCruise = float(self.v_cruise)
 

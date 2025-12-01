@@ -18,6 +18,7 @@ from opendbc.car.common.basedir import BASEDIR
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.common.simple_kalman import KF1D, get_kalman_gain
 from opendbc.car.mock.values import CAR as MOCK
+from opendbc.car.toyota.values import CAR as TOYOTA, NO_DSU_CAR, TSS2_CAR, UNSUPPORTED_DSU_CAR, ToyotaFrogPilotFlags, ToyotaSafetyFlags
 from opendbc.car.values import PLATFORMS
 from opendbc.can import CANParser
 from openpilot.common.params import Params
@@ -204,6 +205,12 @@ class CarInterfaceBase(ABC):
       elif platform in TOYOTA:
         fp_ret.canUsePedal = not CP.autoResumeSng
         fp_ret.canUseSDSU = candidate not in UNSUPPORTED_DSU_CAR and candidate not in TSS2_CAR
+
+        if 0x2AA in fingerprint[0] and candidate in NO_DSU_CAR:
+          fp_ret.flags |= ToyotaFlags.RADAR_CAN_FILTER.value
+
+        if 0x2FF in fingerprint[0] or (0x2AA in fingerprint[0] and candidate in NO_DSU_CAR):
+          fp_ret.flags |= ToyotaFrogPilotFlags.SMART_DSU.value
 
     return fp_ret
 

@@ -241,6 +241,10 @@ class CAR(Platforms):
     CHEVROLET_TRAILBLAZER.specs,
   )
   # FrogPilot variables
+  CHEVROLET_TRAX = GMPlatformConfig(
+    [GMCarDocs("Chevrolet TRAX 2024")],
+    CarSpecs(mass=1365, wheelbase=2.7, steerRatio=16.4, centerToFrontRatio=0.4),
+  )
 
 
 class CruiseButtons:
@@ -346,3 +350,4 @@ CAMERA_ACC_CAR.update(CC_ONLY_CAR)
 DBC = CAR.create_dbc_map()
 
 # FrogPilot variables
+CAMERA_ACC_CAR.update(CAR.CHEVROLET_TRAX)

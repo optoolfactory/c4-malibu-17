@@ -181,6 +181,25 @@ class CarInterfaceBase(ABC):
           if 0x23A not in fingerprint[0]:
             fp_ret.flags |= ChryslerFrogPilotFlags.RAM_HD_ALT_BUTTONS.value
 
+      elif platform in GM:
+        fp_ret.canUsePedal = True
+
+      elif platform in HONDA:
+        fp_ret.canUsePedal = candidate not in HONDA_BOSCH
+
+      elif platform in HYUNDAI:
+        if candidate in CANFD_CAR:
+          hda2 = Ecu.adas in [fw.ecu for fw in car_fw]
+
+          fp_ret.isHDA2 = hda2
+
+        if CP.flags & HyundaiFlags.HAS_LDA_BUTTON:
+          fp_ret.safetyConfigs[-1].safetyParam |= HyundaiFrogPilotSafetyFlags.HAS_LDA_BUTTON.value
+
+      elif platform in TOYOTA:
+        fp_ret.canUsePedal = not CP.autoResumeSng
+        fp_ret.canUseSDSU = candidate not in UNSUPPORTED_DSU_CAR and candidate not in TSS2_CAR
+
     return fp_ret
 
   @staticmethod

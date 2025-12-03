@@ -34,6 +34,7 @@ def frogpilot_boot_functions(build_metadata, params):
 
 def install_frogpilot(build_metadata, params):
   paths = [
+    frogpilot_variables.ERROR_LOGS_PATH,
     THEME_SAVE_PATH
   ]
   for path in paths:

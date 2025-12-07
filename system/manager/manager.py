@@ -41,6 +41,7 @@ def manager_init() -> None:
     params.put_bool("RecordFront", True)
 
   # FrogPilot variables
+  params_cache = Params("/cache/params", return_defaults=True)
 
   # set unset params to their default value
   for k in params.all_keys():
@@ -136,6 +137,7 @@ def manager_thread() -> None:
   ignition_prev = False
 
   # FrogPilot variables
+  params_memory = Params(memory=True)
 
   while True:
     sm.update(1000)
@@ -146,16 +148,19 @@ def manager_thread() -> None:
       params.clear_all(ParamKeyFlag.CLEAR_ON_ONROAD_TRANSITION)
 
       # FrogPilot variables
+      params_memory.clear_all(ParamKeyFlag.CLEAR_ON_ONROAD_TRANSITION)
     elif not started and started_prev:
       params.clear_all(ParamKeyFlag.CLEAR_ON_OFFROAD_TRANSITION)
 
       # FrogPilot variables
+      params_memory.clear_all(ParamKeyFlag.CLEAR_ON_OFFROAD_TRANSITION)
 
     ignition = any(ps.ignitionLine or ps.ignitionCan for ps in sm['pandaStates'] if ps.pandaType != log.PandaState.PandaType.unknown)
     if ignition and not ignition_prev:
       params.clear_all(ParamKeyFlag.CLEAR_ON_IGNITION_ON)
 
       # FrogPilot variables
+      params_memory.clear_all(ParamKeyFlag.CLEAR_ON_IGNITION_ON)
 
     # update onroad params, which drives pandad's safety setter thread
     if started != started_prev:

@@ -28,6 +28,8 @@ def check_assets(theme_manager, thread_manager, params_memory, frogpilot_toggles
     thread_manager.run_with_lock(frogpilot_utilities.flash_panda, (params_memory))
 
 def transition_offroad(gps_position, thread_manager, time_validated, sm, params, frogpilot_toggles):
+  if frogpilot_toggles.lock_doors_timer != 0:
+    thread_manager.run_with_lock(frogpilot_utilities.lock_doors, (frogpilot_toggles.lock_doors_timer, sm, params), report=False)
   if time_validated:
     thread_manager.run_with_lock(send_stats, (gps_position, params, frogpilot_toggles))
 

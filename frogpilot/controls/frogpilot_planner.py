@@ -33,6 +33,8 @@ class FrogPilotPlanner:
     self.road_curvature_detected = False
     self.tracking_lead = False
 
+    self.lane_width_left = 0
+    self.lane_width_right = 0
     self.lateral_acceleration = 0
     self.model_length = 0
     self.road_curvature = 0
@@ -77,6 +79,13 @@ class FrogPilotPlanner:
       "longitude": gps_location.longitude,
       "bearing": gps_location.bearingDeg,
     }
+
+    if v_ego >= frogpilot_toggles.minimum_lane_change_speed:
+      self.lane_width_left = frogpilot_utilities.calculate_lane_width(sm["modelV2"].laneLines[0], sm["modelV2"].laneLines[1], sm["modelV2"].roadEdges[0])
+      self.lane_width_right = frogpilot_utilities.calculate_lane_width(sm["modelV2"].laneLines[3], sm["modelV2"].laneLines[2], sm["modelV2"].roadEdges[1])
+    else:
+      self.lane_width_left = 0
+      self.lane_width_right = 0
 
     self.lateral_acceleration = v_ego**2 * sm["controlsState"].curvature
 
@@ -127,6 +136,9 @@ class FrogPilotPlanner:
     frogpilotPlan.frogpilotToggles = json.dumps(vars(frogpilot_toggles))
 
     frogpilotPlan.increasedStoppedDistance = frogpilot_toggles.increase_stopped_distance
+
+    frogpilotPlan.laneWidthLeft = self.lane_width_left
+    frogpilotPlan.laneWidthRight = self.lane_width_right
 
     frogpilotPlan.lateralCheck = self.lateral_check
 

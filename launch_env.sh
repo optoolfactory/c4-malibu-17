@@ -15,7 +15,10 @@ export VECLIB_MAXIMUM_THREADS=1
 # headroom for this until ui is moved to the CPU.
 export QCOM_PRIORITY=12
 
-if [ -z "$AGNOS_VERSION" ]; then
+RAW_MODEL=$(tr -d '\0' < /sys/firmware/devicetree/base/model 2>/dev/null || true)
+if echo "$RAW_MODEL" | grep -qi "tici"; then
+  export AGNOS_VERSION="12.8"
+elif [ -z "$AGNOS_VERSION" ]; then
   export AGNOS_VERSION="16"
 fi
 

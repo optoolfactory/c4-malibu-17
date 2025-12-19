@@ -114,6 +114,7 @@ class Panda:
   HW_TYPE_UNKNOWN = b'\x00'
   HW_TYPE_WHITE = b'\x01'
   HW_TYPE_BLACK = b'\x03'
+  HW_TYPE_DOS = b'\x06'
   HW_TYPE_RED_PANDA = b'\x07'
   HW_TYPE_TRES = b'\x09'
   HW_TYPE_CUATRO = b'\x0a'
@@ -125,12 +126,14 @@ class Panda:
   HEALTH_STRUCT = struct.Struct("<IIIIIIIIBBBBBHBBBHfBBHHHB")
   CAN_HEALTH_STRUCT = struct.Struct("<BIBBBBBBBBIIIIIIIHHBBBIIII")
 
+  F4_DEVICES = [HW_TYPE_WHITE, HW_TYPE_BLACK, HW_TYPE_DOS]
   H7_DEVICES = [HW_TYPE_RED_PANDA, HW_TYPE_TRES, HW_TYPE_CUATRO, HW_TYPE_BODY]
-  SUPPORTED_DEVICES = H7_DEVICES
+  SUPPORTED_DEVICES = H7_DEVICES + F4_DEVICES
 
-  INTERNAL_DEVICES = (HW_TYPE_TRES, HW_TYPE_CUATRO)
+  INTERNAL_DEVICES = (HW_TYPE_DOS, HW_TYPE_TRES, HW_TYPE_CUATRO)
 
   MAX_FAN_RPMs = {
+    HW_TYPE_DOS: 6500,
     HW_TYPE_TRES: 6600,
     HW_TYPE_CUATRO: 5000,
   }
@@ -611,6 +614,8 @@ class Panda:
 
   def get_mcu_type(self) -> McuType:
     hw_type = self.get_type()
+    if hw_type in Panda.F4_DEVICES:
+      return McuType.F4
     if hw_type in Panda.H7_DEVICES:
       return McuType.H7
     raise ValueError(f"unknown HW type: {hw_type}")

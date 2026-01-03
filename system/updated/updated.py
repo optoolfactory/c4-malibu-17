@@ -413,6 +413,8 @@ class Updater:
     cloudlog.info("finalize success!")
 
     # FrogPilot variables
+    if os.path.isfile(frogpilot_variables.BACKUP_PATH):
+      os.remove(frogpilot_variables.BACKUP_PATH)
 
 def main() -> None:
   params = Params()

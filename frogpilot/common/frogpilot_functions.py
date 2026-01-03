@@ -12,9 +12,10 @@ from openpilot.common.time_helpers import system_time_valid
 from openpilot.system.hardware import HARDWARE
 
 from openpilot.frogpilot.common import frogpilot_utilities, frogpilot_variables
+from openpilot.frogpilot.common.frogpilot_backups import backup_frogpilot
 
 
-def frogpilot_boot_functions():
+def frogpilot_boot_functions(build_metadata, params):
   params_memory = Params(memory=True)
 
   frogpilot_variables.FrogPilotVariables()
@@ -23,6 +24,8 @@ def frogpilot_boot_functions():
     while not system_time_valid():
       print("Waiting for system time to become valid...")
       time.sleep(1)
+
+    backup_frogpilot(build_metadata, params)
 
   threading.Thread(target=boot_thread, daemon=True).start()
 

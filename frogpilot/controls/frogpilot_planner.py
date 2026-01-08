@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-
 import cereal.messaging as messaging
 
 from openpilot.common.constants import CV
@@ -11,6 +10,7 @@ from openpilot.selfdrive.car.cruise import V_CRUISE_MAX
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import A_CHANGE_COST, DANGER_ZONE_COST, J_EGO_COST, STOP_DISTANCE
 
 from openpilot.frogpilot.common import frogpilot_variables
+from openpilot.frogpilot.controls.lib.conditional_experimental_mode import ConditionalExperimentalMode
 from openpilot.frogpilot.controls.lib.frogpilot_acceleration import FrogPilotAcceleration
 from openpilot.frogpilot.controls.lib.frogpilot_events import FrogPilotEvents
 from openpilot.frogpilot.controls.lib.frogpilot_following import FrogPilotFollowing
@@ -22,6 +22,7 @@ class FrogPilotPlanner:
     self.params_memory = Params(memory=True)
 
     self.frogpilot_acceleration = FrogPilotAcceleration(self)
+    self.frogpilot_cem = ConditionalExperimentalMode(self)
     self.frogpilot_events = FrogPilotEvents(self)
     self.frogpilot_following = FrogPilotFollowing(self)
     self.frogpilot_vcruise = FrogPilotVCruise(self)
@@ -52,6 +53,12 @@ class FrogPilotPlanner:
     else:
       self.frogpilot_acceleration.max_accel = 0
       self.frogpilot_acceleration.min_accel = 0
+
+    if long_control_active and frogpilot_toggles.conditional_experimental_mode:
+      self.frogpilot_cem.update(v_ego, sm, frogpilot_toggles)
+    else:
+      self.frogpilot_cem.experimental_mode = False
+      self.frogpilot_cem.stop_sign_and_light(v_ego, sm, PLANNER_TIME - 2)
 
     self.frogpilot_events.update(v_cruise, sm, frogpilot_toggles)
 
@@ -93,6 +100,8 @@ class FrogPilotPlanner:
     frogpilotPlan.speedJerk = float(J_EGO_COST * self.frogpilot_following.speed_jerk)
     frogpilotPlan.tFollow = float(self.frogpilot_following.t_follow)
 
+    frogpilotPlan.experimentalMode = self.frogpilot_cem.experimental_mode
+
     frogpilotPlan.frogpilotEvents = self.frogpilot_events.events.to_msg()
 
     frogpilotPlan.frogpilotToggles = json.dumps(vars(frogpilot_toggles))
@@ -101,6 +110,8 @@ class FrogPilotPlanner:
 
     frogpilotPlan.maxAcceleration = float(self.frogpilot_acceleration.max_accel)
     frogpilotPlan.minAcceleration = float(self.frogpilot_acceleration.min_accel)
+
+    frogpilotPlan.redLight = self.frogpilot_cem.stop_light_detected
 
     frogpilotPlan.vCruise = float(self.v_cruise)
 

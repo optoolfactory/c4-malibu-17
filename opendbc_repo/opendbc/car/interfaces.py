@@ -17,8 +17,9 @@ from opendbc.car.chrysler.values import CAR as CHRYSLER, ChryslerFrogPilotFlags
 from opendbc.car.common.basedir import BASEDIR
 from opendbc.car.common.conversions import Conversions as CV
 from opendbc.car.common.simple_kalman import KF1D, get_kalman_gain
+from opendbc.car.hyundai.values import CAR as HYUNDAI, HyundaiFlags, HyundaiFrogPilotSafetyFlags
 from opendbc.car.mock.values import CAR as MOCK
-from opendbc.car.toyota.values import CAR as TOYOTA, NO_DSU_CAR, TSS2_CAR, UNSUPPORTED_DSU_CAR, ToyotaFrogPilotFlags, ToyotaSafetyFlags
+from opendbc.car.toyota.values import CAR as TOYOTA, NO_DSU_CAR, ToyotaFrogPilotFlags
 from opendbc.car.values import PLATFORMS
 from opendbc.can import CANParser
 from openpilot.common.params import Params
@@ -187,27 +188,13 @@ class CarInterfaceBase(ABC):
           if 0x23A not in fingerprint[0]:
             fp_ret.flags |= ChryslerFrogPilotFlags.RAM_HD_ALT_BUTTONS.value
 
-      elif platform in GM:
-        fp_ret.canUsePedal = True
-
-      elif platform in HONDA:
-        fp_ret.canUsePedal = candidate not in HONDA_BOSCH
-
       elif platform in HYUNDAI:
-        if candidate in CANFD_CAR:
-          hda2 = Ecu.adas in [fw.ecu for fw in car_fw]
-
-          fp_ret.isHDA2 = hda2
-
         if CP.flags & HyundaiFlags.HAS_LDA_BUTTON:
           fp_ret.safetyConfigs[-1].safetyParam |= HyundaiFrogPilotSafetyFlags.HAS_LDA_BUTTON.value
 
       elif platform in TOYOTA:
-        fp_ret.canUsePedal = not CP.autoResumeSng
-        fp_ret.canUseSDSU = candidate not in UNSUPPORTED_DSU_CAR and candidate not in TSS2_CAR
-
         if 0x2AA in fingerprint[0] and candidate in NO_DSU_CAR:
-          fp_ret.flags |= ToyotaFlags.RADAR_CAN_FILTER.value
+          fp_ret.flags |= ToyotaFrogPilotFlags.RADAR_CAN_FILTER.value
 
         if 0x2FF in fingerprint[0] or (0x2AA in fingerprint[0] and candidate in NO_DSU_CAR):
           fp_ret.flags |= ToyotaFrogPilotFlags.SMART_DSU.value
@@ -296,7 +283,7 @@ class CarInterfaceBase(ABC):
     tune.torque.latAccelOffset = 0.0
     tune.torque.steeringAngleDeadzoneDeg = steering_angle_deadzone_deg
 
-  def update(self, can_packets: list[tuple[int, list[CanData]]], frogpilot_toggles: SimpleNamespace) -> structs.CarState:
+  def update(self, can_packets: list[tuple[int, list[CanData]]], frogpilot_toggles: SimpleNamespace) -> tuple[structs.CarState, custom.FrogPilotCarState]:
     # parse can
     for cp in self.can_parsers.values():
       if cp is not None:
@@ -372,7 +359,7 @@ class CarStateBase(ABC):
     self.distance_button = False
 
   @abstractmethod
-  def update(self, can_parsers, frogpilot_toggles) -> structs.CarState:
+  def update(self, can_parsers, frogpilot_toggles) -> tuple[structs.CarState, custom.FrogPilotCarState]:
     pass
 
   def parse_wheel_speeds(self, cs, fl, fr, rl, rr, unit=CV.KPH_TO_MS):

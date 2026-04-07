@@ -3,9 +3,9 @@ import numpy as np
 
 from openpilot.selfdrive.controls.lib.longitudinal_mpc_lib.long_mpc import COMFORT_BRAKE, LEAD_DANGER_FACTOR, STOP_DISTANCE, desired_follow_distance, get_jerk_factor, get_T_FOLLOW
 
-from openpilot.frogpilot.common.frogpilot_variables import CITY_SPEED_LIMIT, MAX_T_FOLLOW
+from openpilot.frogpilot.common import frogpilot_variables
 
-TRAFFIC_MODE_BP = [0., CITY_SPEED_LIMIT]
+TRAFFIC_MODE_BP = [0., frogpilot_variables.CITY_SPEED_LIMIT]
 
 class FrogPilotFollowing:
   def __init__(self, FrogPilotPlanner):
@@ -66,7 +66,7 @@ class FrogPilotFollowing:
     self.following_lead = self.frogpilot_planner.tracking_lead and self.frogpilot_planner.lead_one.dRel < (self.t_follow * 2) * v_ego
 
     if self.frogpilot_planner.frogpilot_weather.weather_id != 0:
-      self.t_follow = min(self.t_follow + self.frogpilot_planner.frogpilot_weather.increase_following_distance, MAX_T_FOLLOW)
+      self.t_follow = min(self.t_follow + self.frogpilot_planner.frogpilot_weather.increase_following_distance, frogpilot_variables.MAX_T_FOLLOW)
 
     if long_control_active and self.frogpilot_planner.tracking_lead:
       if not sm["frogpilotCarState"].trafficModeEnabled and frogpilot_toggles.human_following:

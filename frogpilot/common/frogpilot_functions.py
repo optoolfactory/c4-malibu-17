@@ -1,15 +1,13 @@
 #!/usr/bin/env python3
 import dataclasses
-import io
 import json
-import random
 import requests
-import string
 import threading
 import time
 
 from pathlib import Path
 
+from cereal import messaging
 from openpilot.common.basedir import BASEDIR
 from openpilot.common.params import Params
 from openpilot.common.time_helpers import system_time_valid
@@ -59,8 +57,23 @@ def capture_report(discord_user, report, params, frogpilot_toggles):
 def frogpilot_boot_functions(build_metadata, params):
   params_memory = Params(memory=True)
 
+  maps_selected = params.get("MapsSelected")
+  if maps_selected:
+    try:
+      data = json.loads(maps_selected)
+      if isinstance(data, dict):
+        new_items = []
+        for nation in data.get("nations", []):
+          new_items.append(f"nation.{nation}")
+        for state in data.get("states", []):
+          new_items.append(f"us_state.{state}")
+        new_items.sort()
+        params.put("MapsSelected", ",".join(new_items))
+    except (json.JSONDecodeError, TypeError, ValueError):
+      pass
+
   frogpilot_variables.FrogPilotVariables()
-  ThemeManager(params, params_memory, boot_run=True).update_active_theme(time_validated=system_time_valid(), frogpilot_toggles=get_frogpilot_toggles(), boot_run=True)
+  ThemeManager(params, params_memory, boot_run=True).update_active_theme(time_validated=system_time_valid(), frogpilot_toggles=frogpilot_variables.get_frogpilot_toggles(), boot_run=True)
 
   if frogpilot_utilities.use_konik_server():
     if params.get("KonikDongleId") is not None:
@@ -86,7 +99,7 @@ def install_frogpilot(build_metadata, params):
     frogpilot_variables.ERROR_LOGS_PATH,
     frogpilot_variables.HD_LOGS_PATH,
     frogpilot_variables.KONIK_LOGS_PATH,
-    THEME_SAVE_PATH
+    frogpilot_variables.THEME_SAVE_PATH
   ]
   for path in paths:
     path.mkdir(parents=True, exist_ok=True)
@@ -95,16 +108,16 @@ def install_frogpilot(build_metadata, params):
 
   update_boot_logo(frogpilot=True)
 
-  if build_metadata.channel == "FrogPilot-Development" and is_FrogsGoMoo():
+  if build_metadata.channel == "FrogPilot-Development" and frogpilot_utilities.is_FrogsGoMoo():
     mount_options = frogpilot_utilities.run_cmd(["findmnt", "-n", "-o", "OPTIONS", "/persist"], "Successfully retrieved mount options", "Failed to retrieve mount options")
     frogpilot_utilities.run_cmd(["sudo", "mount", "-o", "remount,rw", "/persist"], "Successfully remounted /persist as read-write", "Failed to remount /persist")
-    frogpilot_utilities.run_cmd(["sudo", "python3", FROGS_GO_MOO_PATH], "Successfully ran frogsgomoo.py", "Failed to run frogsgomoo.py")
+    frogpilot_utilities.run_cmd(["sudo", "python3", frogpilot_variables.FROGS_GO_MOO_PATH], "Successfully ran frogsgomoo.py", "Failed to run frogsgomoo.py")
     frogpilot_utilities.run_cmd(["sudo", "mount", "-o", f"remount,{mount_options}", "/persist"], "Successfully restored /persist mount options", "Failed to restore /persist mount options")
 
 
 def register_device(build_metadata, params):
   def register_thread():
-    while not is_url_pingable(FROGPILOT_API):
+    while not frogpilot_utilities.is_url_pingable(frogpilot_variables.FROGPILOT_API):
       time.sleep(60)
 
     payload = {
@@ -221,7 +234,7 @@ def update_maps(now, params, params_memory, manual_update=False):
 
 def update_openpilot(thread_manager, params):
   def update_available():
-    run_cmd(["pkill", "-SIGUSR1", "-f", "system.updated.updated"], "Checking for updates...", "Failed to check for update...", report=False)
+    frogpilot_utilities.run_cmd(["pkill", "-SIGUSR1", "-f", "system.updated.updated"], "Checking for updates...", "Failed to check for update...", report=False)
 
     while params.get("UpdaterState") != "checking...":
       time.sleep(1)
@@ -235,7 +248,7 @@ def update_openpilot(thread_manager, params):
     while params.get_bool("IsOnroad") or thread_manager.is_thread_alive("lock_doors"):
       time.sleep(60)
 
-    run_cmd(["pkill", "-SIGHUP", "-f", "system.updated.updated"], "Update available, downloading...", "Failed to download update...", report=False)
+    frogpilot_utilities.run_cmd(["pkill", "-SIGHUP", "-f", "system.updated.updated"], "Update available, downloading...", "Failed to download update...", report=False)
 
     while not params.get_bool("UpdateAvailable"):
       time.sleep(60)

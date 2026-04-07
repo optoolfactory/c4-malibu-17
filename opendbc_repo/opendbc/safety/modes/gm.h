@@ -296,6 +296,7 @@ static safety_config gm_init(uint16_t param) {
 
   const uint16_t GM_PARAM_HW_CAM_LONG = 2;
   bool gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG);
+  gm_pcm_cruise = (gm_hw == GM_CAM) && !gm_cam_long && !gm_pedal_long;
 
   // OPGM Variables
   const uint16_t GM_PARAM_CC_LONG = 8;
@@ -309,7 +310,6 @@ static safety_config gm_init(uint16_t param) {
 
   const uint16_t GM_PARAM_PEDAL_LONG = 64;
   gm_pedal_long = GET_FLAG(param, GM_PARAM_PEDAL_LONG);
-  gm_pcm_cruise = (gm_hw == GM_CAM) && !gm_cam_long && !gm_pedal_long;
 
   safety_config ret;
   if (gm_hw == GM_CAM) {

@@ -1,7 +1,7 @@
 """Install exception handler for process crash."""
 import sentry_sdk
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from sentry_sdk.integrations.threading import ThreadingIntegration
 
@@ -11,7 +11,7 @@ from openpilot.system.hardware import HARDWARE, PC
 from openpilot.common.swaglog import cloudlog
 from openpilot.system.version import get_build_metadata, get_version
 
-from openpilot.frogpilot.common.frogpilot_variables import ERROR_LOGS_PATH
+from openpilot.frogpilot.common import frogpilot_variables
 
 
 class SentryProject(Enum):
@@ -62,8 +62,8 @@ def set_tag(key: str, value: str) -> None:
 
 def save_exception(exc_text: str, crash_log) -> None:
   files = [
-    ERROR_LOGS_PATH / datetime.now().astimezone().strftime("%Y-%m-%d--%H-%M-%S.log"),
-    ERROR_LOGS_PATH / "error.txt"
+    frogpilot_variables.ERROR_LOGS_PATH / datetime.now().astimezone().strftime("%Y-%m-%d--%H-%M-%S.log"),
+    frogpilot_variables.ERROR_LOGS_PATH / "error.txt"
   ]
 
   for file_path in files:
@@ -115,6 +115,6 @@ def init(project: SentryProject) -> bool:
   sentry_sdk.set_tag("branch", short_branch)
   sentry_sdk.set_tag("commit", build_metadata.openpilot.git_commit)
   sentry_sdk.set_tag("device", HARDWARE.get_device_type())
-  sentry_sdk.set_tag("updated", params.get("Updated"))
+  sentry_sdk.set_tag("updated", params.get("LastUpdateTime").replace(tzinfo=timezone.utc).isoformat())
 
   return True

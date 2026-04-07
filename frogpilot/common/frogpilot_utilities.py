@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import dataclasses
 import json
 import math
 import numpy as np
@@ -19,9 +20,12 @@ from cereal import log, messaging
 from opendbc.can.parser import CANParser
 from opendbc.car.toyota.carcontroller import LOCK_CMD
 from openpilot.common.realtime import DT_DMON, DT_HW
+from openpilot.common.params import Params
 from panda import Panda
+from openpilot.system.hardware import HARDWARE
+from openpilot.system.version import get_build_metadata
 
-from openpilot.common.utils import atomic_write
+from openpilot.common.utils import atomic_write, run_cmd as base_run_cmd
 from openpilot.frogpilot.common import frogpilot_variables
 
 class ThreadManager:
@@ -153,7 +157,6 @@ def extract_zip(zip_file, extract_path):
 
   with zipfile.ZipFile(zip_file, "r") as archive:
     print(f"Extracting {zip_file} to {extract_path}")
-
     for member in archive.infolist():
       member_name = member.filename.replace("\\", "/")
       destination = (extract_root / member_name).resolve()
@@ -184,6 +187,17 @@ def flash_panda(params_memory):
       sentry.capture_exception(exception)
 
   params_memory.remove("FlashPanda")
+
+
+def get_frogpilot_api_info():
+  params = Params()
+
+  api_token = params.get("FrogPilotApiToken")
+  build_metadata = dataclasses.asdict(get_build_metadata())
+  device_type = HARDWARE.get_device_type()
+  dongle_id = params.get("FrogPilotDongleId")
+
+  return api_token, build_metadata, device_type, dongle_id
 
 
 def get_lock_status(can_parser, can_sock):
@@ -268,14 +282,15 @@ def lock_doors(lock_doors_timer, sm, params):
 
 def run_cmd(cmd, success_message, fail_message, env=None, report=True):
   try:
-    result = subprocess.run(cmd, capture_output=True, check=True, env=env, text=True)
+    result = base_run_cmd(cmd, env=env)
     print(success_message)
-    return result.stdout.strip()
+    return result
   except subprocess.CalledProcessError as exception:
-    print(f"Command failed with error: {exception.stderr}")
+    if exception.output:
+      print(f"Command failed with error: {exception.output}")
     print(fail_message)
     if report:
-      sentry.capture_exception(exception.stderr)
+      sentry.capture_exception(exception)
     return None
   except Exception as exception:
     print(f"Unexpected error occurred: {exception}")

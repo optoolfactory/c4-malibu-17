@@ -9,7 +9,7 @@ from dateutil import easter
 from pathlib import Path
 from urllib.parse import quote_plus
 
-from openpilot.frogpilot.common.frogpilot_download_utilities import GITLAB_URL, download_file, get_repository_url, handle_error, verify_download
+from openpilot.frogpilot.common.frogpilot_download_utilities import GITLAB_URL, download_file, get_repository_sources, handle_error, verify_download
 from openpilot.frogpilot.common.frogpilot_utilities import delete_file, extract_zip, load_json_file, update_json_file
 from openpilot.frogpilot.common.frogpilot_variables import ACTIVE_THEME_PATH, RANDOM_EVENTS_PATH, RESOURCES_REPO, THEME_SAVE_PATH
 
@@ -101,11 +101,12 @@ class ThemeManager:
   def download_theme(self, theme_component, theme_name, asset_param, frogpilot_toggles):
     self.downloading_theme = True
 
-    repo_url = get_repository_url(self.session)
-    if not repo_url:
+    sources = get_repository_sources()
+    if not sources:
       handle_error(None, asset_param, "Repository unavailable", "GitHub and GitLab are offline...", self.params_memory, DOWNLOAD_PROGRESS_PARAM)
       self.downloading_theme = False
       return
+    repo_url = sources[0][2]
 
     if theme_component == "distance_icons":
       download_link = f"{repo_url}/Distance-Icons/{theme_name}"
@@ -579,10 +580,11 @@ class ThemeManager:
     if self.downloading_theme:
       return
 
-    repo_url = get_repository_url(self.session)
-    if repo_url is None:
+    sources = get_repository_sources()
+    if not sources:
       print("GitHub and GitLab are offline...")
       return
+    repo_url = sources[0][2]
 
     assets = self.fetch_assets(repo_url, frogpilot_toggles)
     if not assets:

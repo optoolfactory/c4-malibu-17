@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import json
+
 import cereal.messaging as messaging
 
 from openpilot.common.constants import CV
@@ -30,6 +32,7 @@ class FrogPilotPlanner:
     self.frogpilot_weather = WeatherChecker(self)
 
     self.driving_in_curve = False
+    self.gps_valid = False
     self.lateral_check = False
     self.model_stopped = False
     self.road_curvature_detected = False
@@ -71,7 +74,7 @@ class FrogPilotPlanner:
 
     self.driving_in_curve = abs(self.lateral_acceleration) >= frogpilot_variables.MINIMUM_LATERAL_ACCELERATION
 
-    self.frogpilot_events.update(v_cruise, sm, frogpilot_toggles)
+    self.frogpilot_events.update(long_control_active, sm, frogpilot_toggles)
 
     self.frogpilot_following.update(long_control_active, v_ego, sm, frogpilot_toggles)
 
@@ -81,6 +84,7 @@ class FrogPilotPlanner:
       "longitude": gps_location.longitude,
       "bearing": gps_location.bearingDeg,
     }
+    self.gps_valid = self.gps_position["latitude"] != 0 or self.gps_position["longitude"] != 0
 
     if v_ego >= frogpilot_toggles.minimum_lane_change_speed:
       self.lane_width_left = frogpilot_utilities.calculate_lane_width(sm["modelV2"].laneLines[0], sm["modelV2"].laneLines[1], sm["modelV2"].roadEdges[0])
@@ -102,14 +106,14 @@ class FrogPilotPlanner:
 
     self.road_curvature, self.time_to_curve = frogpilot_utilities.calculate_road_curvature(sm["modelV2"])
 
-    self.road_curvature_detected = (1 / abs(self.road_curvature))**0.5 < v_ego > frogpilot_variables.CRUISING_SPEED and not (sm["carState"].leftBlinker or sm["carState"].rightBlinker)
+    self.road_curvature_detected = ((1 / abs(self.road_curvature))**0.5 < v_ego > frogpilot_variables.CRUISING_SPEED and not (sm["carState"].leftBlinker or sm["carState"].rightBlinker))
 
     if not sm["carState"].standstill:
       self.tracking_lead = self.update_lead_status()
 
     self.v_cruise = self.frogpilot_vcruise.update(long_control_active, now, time_validated, v_cruise, v_ego, sm, frogpilot_toggles)
 
-    if self.gps_position and time_validated and frogpilot_toggles.weather_presets:
+    if self.gps_valid and time_validated and frogpilot_toggles.weather_presets:
       self.frogpilot_weather.update_weather(now, frogpilot_toggles)
     else:
       self.frogpilot_weather.weather_id = 0

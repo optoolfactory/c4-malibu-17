@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import dataclasses
+import requests
 import threading
 import time
 
@@ -23,13 +25,44 @@ def frogpilot_boot_functions():
   threading.Thread(target=boot_thread, daemon=True).start()
 
 
-def install_frogpilot():
+def install_frogpilot(build_metadata, params):
   paths = [
   ]
   for path in paths:
     path.mkdir(parents=True, exist_ok=True)
 
+  register_device(build_metadata, params)
+
   update_boot_logo(frogpilot=True)
+
+
+def register_device(build_metadata, params):
+  def register_thread():
+    while not is_url_pingable(FROGPILOT_API):
+      time.sleep(60)
+
+    payload = {
+      "build_metadata": dataclasses.asdict(build_metadata),
+      "device": HARDWARE.get_device_type(),
+      "dongle_id": params.get("DongleId"),
+    }
+
+    try:
+      response = requests.post(
+        f"{FROGPILOT_API}/register",
+        json=payload,
+        headers={"Content-Type": "application/json", "User-Agent": "frogpilot-api/1.0"},
+        timeout=10,
+      )
+      response.raise_for_status()
+
+      data = response.json()
+      params.put("FrogPilotApiToken", data.get("api_token", ""))
+      params.put("FrogPilotDongleId", data.get("frogpilot_dongle_id"))
+    except Exception:
+      pass
+
+  threading.Thread(target=register_thread, daemon=True).start()
 
 
 def uninstall_frogpilot():

@@ -15,6 +15,8 @@ from openpilot.common.swaglog import cloudlog
 from openpilot.system import micd
 from openpilot.system.hardware import HARDWARE
 
+from openpilot.frogpilot.common import frogpilot_variables
+
 SAMPLE_RATE = 48000
 SAMPLE_BUFFER = 4096 # (approx 100ms)
 MAX_VOLUME = 1.0
@@ -80,6 +82,8 @@ class Soundd:
 
     # FrogPilot variables
     self.params_memory = Params(memory=True)
+
+    self.frogpilot_toggles = frogpilot_variables.get_frogpilot_toggles()
 
     self.update_frogpilot_sounds()
 
@@ -184,6 +188,11 @@ class Soundd:
         assert stream.active
 
         # FrogPilot variables
+        frogpilot_toggles = frogpilot_variables.get_frogpilot_toggles(sm)
+        if frogpilot_toggles != self.frogpilot_toggles:
+          self.frogpilot_toggles = frogpilot_toggles
+
+          self.update_frogpilot_sounds()
 
   def update_frogpilot_sounds(self):
 

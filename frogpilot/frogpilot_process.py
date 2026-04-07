@@ -9,12 +9,16 @@ from openpilot.common.realtime import DT_MDL, Priority, Ratekeeper, config_realt
 from openpilot.common.time_helpers import system_time_valid
 
 from openpilot.frogpilot.controls.frogpilot_planner import FrogPilotPlanner
+from openpilot.frogpilot.system.frogpilot_stats import send_stats
+from openpilot.frogpilot.system.frogpilot_tracking import FrogPilotTracking
 
 ASSET_CHECK_RATE = (1 / DT_MDL)
 
 def check_assets(params_memory):
 
-def transition_offroad(time_validated, sm, params):
+def transition_offroad(gps_position, time_validated, sm, params):
+  if time_validated:
+    thread_manager.run_with_lock(send_stats, (gps_position, params))
 
 def transition_onroad():
 
@@ -51,17 +55,20 @@ def frogpilot_thread():
     started = sm["deviceState"].started
 
     if not started and started_previously:
-      transition_offroad(time_validated, sm, params)
+      transition_offroad(frogpilot_planner.gps_position, time_validated, sm, params)
 
       run_update_checks = True
     elif started and not started_previously:
       frogpilot_planner = FrogPilotPlanner()
+      frogpilot_tracking = FrogPilotTracking(frogpilot_planner)
 
       transition_onroad()
 
     if started and sm.updated["modelV2"]:
       frogpilot_planner.update(now, time_validated, sm)
       frogpilot_planner.publish(sm, pm)
+
+      frogpilot_tracking.update(now, time_validated, sm)
     elif not started:
       frogpilot_plan_send = messaging.new_message("frogpilotPlan")
       pm.send("frogpilotPlan", frogpilot_plan_send)
@@ -83,6 +90,7 @@ def frogpilot_thread():
       if not time_validated:
         continue
 
+      thread_manager.run_with_lock(send_stats, (frogpilot_planner.gps_position, params))
       thread_manager.run_with_lock(update_checks, (now, params, params_memory, True))
 
     rate_keeper.keep_time()
